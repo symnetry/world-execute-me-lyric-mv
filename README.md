@@ -79,8 +79,11 @@ Mili《world.execute(me);》的歌詞 MV 渲染工程,**第四版**。整支影�
    npm run preview
    ```
 
-4. 瀏覽器開啟 http://localhost:5173/ ,按 play。沒有音檔時畫面仍可無聲播放,頁面下方的 `sound` 一行會說明原因。
+4. 瀏覽器開啟 http://localhost:5173/ ,點一下畫正中的播放鍵。沒有音檔時畫面仍可無聲播放,原因會以一行小字顯示幾秒後淡出。
 5. 導出影片:`npm run export:preview`(1080p60)或 `npm run export:4k`(4K60),輸出在 `out/`。
+
+`npm run preview` 走 `export/server.mjs`:一個零依賴的靜態伺服器,不經過打包器。想用 Vite 的開發伺服器(改 `src/` 時熱更新)就用
+`npm run dev`;想打包成可以上線的靜態網站就用 `npm run build`,見下方「[打包與部署](#打包與部署)」。
 
 `ffmpeg` 由 `ffmpeg-static` 提供(`node_modules/ffmpeg-static/ffmpeg.exe` 不存在時執行一次 `node node_modules/ffmpeg-static/install.js`)。
 Python 只有重新分析音頻與檢查導出檔時才需要,見下方「檢查工具用的 Python 環境」。
@@ -161,8 +164,11 @@ The project was made and tested on Windows 11 only.
    npm run preview
    ```
 
-4. The browser opens http://localhost:5173/ : press play. Without an audio file the picture still plays, silently; the `sound` line under the picture says why.
+4. The browser opens http://localhost:5173/ : click the play button in the middle of the picture. Without an audio file the picture still plays, silently; a line of small text says why and fades after a few seconds.
 5. Export a video: `npm run export:preview` (1080p60) or `npm run export:4k` (4K60); the files go to `out/`.
+
+`npm run preview` runs `export/server.mjs`, a dependency-free static server with no bundler in the way. `npm run dev` starts the Vite
+dev server instead (hot reload while you edit `src/`); `npm run build` writes a static site you can upload — see "打包與部署" below.
 
 `ffmpeg` comes from `ffmpeg-static` (if `node_modules/ffmpeg-static/ffmpeg.exe` is missing, run `node node_modules/ffmpeg-static/install.js` once).
 Python is needed only to re-analyse the audio and to check an exported file.
@@ -240,7 +246,42 @@ npm run build
 要改部署路徑,改 `vite.config.js` 最上面的 `DEPLOY_PATH` 就好。想在本機先看產物:`npx vite preview --base /worldexcuteme/`
 (注意 Git Bash 會把 `/worldexcuteme/` 當成路徑改寫掉,要用 `cmd` 或 PowerShell 跑,或者直接拿 `export/server.mjs` 指到 `dist/worldexcuteme/`)。
 
+### nginx
+
+把整個資料夾放到 `/var/www/worldexcuteme/`,然後:
+
+```nginx
+location = /worldexcuteme { return 301 /worldexcuteme/; }
+location = /worldexcuteme/config.json { root /var/www; add_header Cache-Control "no-store"; }
+location ^~ /worldexcuteme/ { root /var/www; try_files $uri $uri/ =404; }
+```
+
+三個地方容易出錯:
+
+- **`try_files` 的結尾不要寫 `/index.html`。** 這不是有前端路由的 SPA:缺失的檔案必須老實回 404,寫成回退 `index.html` 會讓缺的 `.js` 以 `text/html` 送出,瀏覽器報 MIME 錯誤、畫面全黑,比 404 更難查。
+- **`location` 要帶結尾斜線,而且得補一條不帶斜線的 301。** `location ^~ /worldexcuteme/` 匹配不到 `/worldexcuteme` 本身,那一下會掉到 server 級的預設 root,直接 404。
+- **`audio/` 要能吃 Range。** nginx 原生就支援,不必配;但 `gzip_types` 裡不要放 `audio/mpeg`,否則分段請求會壞、拖時間軸會卡。已經壓過的二進位(`mp3`、`woff2`、`png`)也都不該再過 gzip。
+
 `dist/` 在 `.gitignore` 裡。發布前記得跑一次 `npm run check:lyrics`:產物會帶著音檔,而倉庫不能有歌詞。
+
+## 這一輪改了什麼(vite 分支)
+
+`main` 是原始版本:零建置,`index.html` 直接 `<script type="module" src="/src/main.js">`,由瀏覽器原生載入 56 個 ES module,
+用 `export/server.mjs` 起一個靜態伺服器就能看。`vite` 分支把它變成一個能打包上線的前端專案,順手把預覽介面收到只剩一個播放鍵。
+
+**畫面的內容一格都沒有動。** 同一個 `t` 仍然畫出同一幀:時間軸、歌詞對齊、閃光安全、確定性全部照舊,導出的影片不受影響。
+
+| 改了什麼 | 為什麼、在哪裡 |
+| --- | --- |
+| **打包** | 新增 `vite.config.js` 與 `npm run dev` / `build` / `serve:dist`;產物在 `dist/worldexcuteme/`,見上面「打包與部署」 |
+| **可以掛在子路徑** | 新增 `src/engine/url.js`:所有執行期檔案(config、`data/`、剪影、字體、音檔)改走 `BASE` + 逐段編碼的相對路徑。打包後 `BASE` 是 `/worldexcuteme/`,不打包時退回 `/`——所以 `export/server.mjs` 與 `npm run export:*` 照舊能用 |
+| **動態 import 改成靜態** | `src/scenes/index.js` 與 `lab.js` 原本 `await import(file)` 用變數名載入段落,打包後檔名變成 `bundle/01_boot-<hash>.js`,15 個 404、整片黑畫面。改成顯式 `import * as m01` + 名字→模組的映射表。**沒有用 `import.meta.glob`**:那是 Vite 專有語法,會讓不經過打包器的路徑直接崩 |
+| **字體只留用到的字形** | 四個 Noto 套件合計約 300 MB,片子實際只用到 48 個字形。`mvFontSubset` 按 `config.fonts.cjk[].text` 篩 `unicode-range` 分片,1.1 MB |
+| **介面只剩一個播放鍵** | 刪掉進度條、時間碼、右下角七行 HUD 與 `sound` 一行。全螢幕畫布 + 畫正中的霧面玻璃圓形播放鍵;播放時按鈕**完全消失**(它是播放鍵,不是暫停鍵),點畫面即暫停,靜止 1.6 秒後游標也隱藏 |
+| **音檔資料夾改名** | `音頻&歌詞/` → `audio/`。目錄名裡的 `&` 被 `encodeURIComponent` 編成 `%26` 之後,Vite 的 dev server 不會解回來,直接回 `index.html`,於是 `<audio>` 報 404。改成純 ASCII 一勞永逸,`config.json` 的 `paths.audio` / `paths.lrc` 已同步 |
+| **mp3 也能用** | `export/server.mjs` 的 MIME 表補上 `.mp3` / `.m4a` / `.ogg` / `.flac`——原本只有 `.wav`,mp3 會以 `application/octet-stream` 送出。實測 LAME 編碼的 mp3 比 wav 早 25 ms 起音,但全程恆定 1–2 幀(相關係數 0.93–0.98),`timing.offset` 維持 0 即可 |
+
+`?t=` 深鏈、`?w=&h=` 解析度覆寫、`?lab=` 檢查卡、空白鍵 / ←→ / `,` `.` 這些鍵位都保留,行為沒有變。
 
 ## 其他命令
 
@@ -330,6 +371,8 @@ uv pip install --python .venv\Scripts\python.exe librosa soundfile numpy
 
 ```
 preview.cmd              Windows 下雙擊啟動預覽(第一次會先執行 npm install)
+index.html               頁面本身:一幅填滿視窗的畫布 + 正中的播放鍵;打包時由 Vite 改寫資源路徑
+vite.config.js           打包設定:部署前綴、產物目錄、複製執行期檔案、字體裁剪(見「打包與部署」)
 config.json              palettes(顏色狀態)、spot(茄子與番茄的專色)、fonts、glow / post、safety(含片頭長度)、解析度、時間偏移、編碼
 docs/v4/PROMPT_v4.md     第四版的要求(優先於其他文件)
 docs/v4/PLAN.md          敘事、三種畫面、顏色語義、質感標準、剪影的用法、分段、文案歸屬、閃光安全
@@ -355,6 +398,7 @@ src/engine/
                   第四版的光效(預設全關):bloomAll(米白與過曝的橙也泛光)、rays(從一點向外的光線)、streak(水平光條)、zoomBlur(推進模糊)
   transitions.js  轉場庫(15 種)
   type.js         大字、逐字出現、沿路徑排字、limp(分條壓扁的字:下垂變軟的字母)
+  url.js          執行期檔案的路徑:BASE(打包時的部署前綴,不打包時為 '/')+ 逐段編碼;所有 fetch / 字體 / 音檔都經過它
   shapes.js layout.js geom.js features.js lyrics.js prng.js util.js
 src/components/
   chat.js         聊天介面:視窗、側欄、標題列、輸入框、對話串、開關 / 分段 / 滑桿、抽屜、提示、卡片
@@ -382,6 +426,7 @@ export/           server.mjs(靜態伺服器)、export.mjs(無頭 Chrome → ffm
 ```
 
 文件裡提到的 `out/`(導出檔、縮圖表、量測輸出)、`backup/`(第三版與修復輪之前的備份)與 `圖片/`(剪影的原檔)都只在製作者的本機,不在倉庫內。
+`dist/` 是 `npm run build` 的產物,也在 `.gitignore` 裡——它帶著音檔和歌詞,不進倉庫。
 
 ## 這一版的規則(摘要,完整版在 PLAN.md)
 
