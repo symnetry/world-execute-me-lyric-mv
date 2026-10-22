@@ -20,6 +20,25 @@ import { room } from '../components/chat.js';
 /** Section modules that contribute check cards: [file, export]. A missing file is skipped. */
 const LAB_SOURCES = [['./cover.js', 'labCards'], ['./meme.js', 'labCards'], ['./plates_chorus.js', 'labCards'], ['./plates_love.js', 'labCards'], ['./12_chorusx.js', 'labCards'], ['./objects.js', 'labCards'], ['./plates_verse2.js', 'labCards'], ['./plates_pre2.js', 'labCards'], ['./history.js', 'labCards'], ['./11_execution.js', 'labCards'], ['./11_count.js', 'labCards']];
 
+// a bundler cannot follow `import(name)`: a static map instead, which works served as-is and built (see index.js)
+import * as l01 from './cover.js';
+import * as l02 from './meme.js';
+import * as l03 from './plates_chorus.js';
+import * as l04 from './plates_love.js';
+import * as l05 from './12_chorusx.js';
+import * as l06 from './objects.js';
+import * as l07 from './plates_verse2.js';
+import * as l08 from './plates_pre2.js';
+import * as l09 from './history.js';
+import * as l10 from './11_execution.js';
+import * as l11 from './11_count.js';
+
+const LAB_MODULES = {
+  './cover.js': l01, './meme.js': l02, './plates_chorus.js': l03, './plates_love.js': l04, './12_chorusx.js': l05,
+  './objects.js': l06, './plates_verse2.js': l07, './plates_pre2.js': l08, './history.js': l09,
+  './11_execution.js': l10, './11_count.js': l11,
+};
+
 const label = (ctx, str, x = 60, y = 1040) => ctx.text(str, x, y, { size: 24, font: 'mono', color: 'sub' });
 
 function inkCards({ art }) {
@@ -97,7 +116,7 @@ export function labShots(env, set, extra = {}) {
 export async function labExtra(env) {
   const out = {};
   for (const [file, fn] of LAB_SOURCES) {
-    try { const mod = await import(file); if (mod[fn]) Object.assign(out, mod[fn](env)); } catch { /* not built yet */ }
+    try { const mod = LAB_MODULES[file]; if (mod[fn]) Object.assign(out, mod[fn](env)); } catch { /* not built yet */ }
   }
   return out;
 }

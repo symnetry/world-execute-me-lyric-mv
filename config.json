@@ -1,7 +1,7 @@
 {
   "paths": {
-    "audio": "音頻&歌詞/Mili - world.execute (me) ;.wav",
-    "lrc": "音頻&歌詞/Mili - world.execute (me) ;.lrc",
+    "audio": "audio/world-execute-me.mp3",
+    "lrc": "audio/world-execute-me.lrc",
     "features": "data/audio_features.json",
     "lyrics": "data/lyrics.json",
     "art": "assets/character",

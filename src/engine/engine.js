@@ -5,6 +5,7 @@
 // Layers: two content layers (A = outgoing shot, B = incoming shot while their time
 // ranges overlap) and one transparent overlay layer drawn on top of the transition.
 import { rand, setSeed } from './prng.js';
+import { BASE, assetUrl } from './url.js';
 import { Features } from './features.js';
 import { Lyrics } from './lyrics.js';
 import { Ctx } from './draw.js';
@@ -21,7 +22,7 @@ async function loadFonts(cfg, step) {
   for (const key of ['mono', 'serif', 'sans']) {
     const { family, pkg, weights, italic = [] } = cfg.fonts[key];
     const add = (w, style) => {
-      const face = new FontFace(family, `url("/node_modules/@fontsource/${pkg}/files/${pkg}-latin-${w}-${style}.woff2")`, { weight: String(w), style });
+      const face = new FontFace(family, `url("${BASE}node_modules/@fontsource/${pkg}/files/${pkg}-latin-${w}-${style}.woff2")`, { weight: String(w), style });
       jobs.push(face.load().then((f) => { document.fonts.add(f); step(`font  ${family} ${w}${style === 'italic' ? ' italic' : ''}`); }));
     };
     weights.forEach((w) => add(w, 'normal'));
@@ -33,7 +34,7 @@ async function loadFonts(cfg, step) {
   for (const c of cfg.fonts.cjk || []) {
     await new Promise((res, rej) => {
       const link = document.createElement('link');
-      link.rel = 'stylesheet'; link.href = `/node_modules/@fontsource/${c.pkg}/${c.weight}.css`;
+      link.rel = 'stylesheet'; link.href = `${BASE}node_modules/@fontsource/${c.pkg}/${c.weight}.css`;
       link.onload = res; link.onerror = () => rej(new Error('font css failed: ' + c.pkg));
       document.head.appendChild(link);
     });
@@ -52,7 +53,7 @@ export function loadSteps(cfg) {
   return n;
 }
 
-const getJson = async (p) => { try { return await (await fetch('/' + p.split('/').map(encodeURIComponent).join('/'))).json(); } catch { return null; } };
+const getJson = async (p) => { try { return await (await fetch(assetUrl(p))).json(); } catch { return null; } };
 
 /** onStep(label), preview only: called as each thing is loaded (the page's progress bar); it never touches a frame. */
 export async function createEngine({ canvas, width, height, cfg, featuresData, lyricsData, flipY = false, lab = null, onStep = null }) {

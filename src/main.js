@@ -1,13 +1,14 @@
 // Page entry. One page, two modes sharing the same engine:
-//   preview (default): real-time, t comes from the <audio> clock (or the seek bar when paused). t is SONG time: the film
-//                      starts at -safety.preroll with a silent warning page, so the seek bar starts there too
+//   preview (default): the film alone on a black page, with one glass play button in the middle of it. t comes from
+//                      the <audio> clock, or from the last frame drawn while paused. t is SONG time: the film starts
+//                      at -safety.preroll with a silent warning page, so ?t=-5 is that page and ?t=0 the first frame
+//                      of the song.
 //   export (?mode=export&w=..&h=..): no UI; Node drives window.__mv frame by frame
 import { createEngine, loadSteps } from './engine/engine.js';
-import { timecode } from './engine/util.js';
+import { assetUrl as urlOf } from './engine/url.js';
 
 const qs = new URLSearchParams(location.search);
 const $ = (id) => document.getElementById(id);
-const urlOf = (p) => '/' + p.split('/').map(encodeURIComponent).join('/');
 const getJson = async (p) => {
   const r = await fetch(urlOf(p));
   if (!r.ok) throw new Error(`${p}: HTTP ${r.status}`);
@@ -43,8 +44,17 @@ try {
     getJson(cfg.paths.features).then((d) => (boot.step('audio features'), d)),
     getJson(cfg.paths.lyrics).then((d) => (boot.step('lyric lines'), d)),
   ]);
-  width = +qs.get('w') || cfg.video.previewWidth;
-  height = +qs.get('h') || cfg.video.previewHeight;
+  if (isExport) {
+    width = +qs.get('w') || cfg.video.previewWidth;
+    height = +qs.get('h') || cfg.video.previewHeight;
+  } else {
+    // the preview is the whole window now, so it renders at the size it is shown at (capped: 1080p is plenty, and
+    // the film is drawn in virtual 1920x1080 units, so any resolution gives the same picture)
+    const s = Math.min(innerWidth / 16, innerHeight / 9);          // css px per virtual unit
+    const h = Math.max(360, Math.min(1080, Math.round(s * 9 * Math.min(devicePixelRatio || 1, 2))));
+    width = +qs.get('w') || Math.round(h * 16 / 9);
+    height = +qs.get('h') || h;
+  }
   // ?lab=<set> renders the check cards of src/scenes/lab.js instead of the film (node export/export.mjs --lab <set> --sheet ...)
   engine = await createEngine({ canvas: $('view'), width, height, cfg, featuresData, lyricsData, flipY: isExport, lab: qs.get('lab'), onStep: isExport ? null : boot.step });
 } catch (e) { boot.fail(e); throw e; }
@@ -94,14 +104,13 @@ function setupExport() {
 
 // ---------------------------------------------------------------------------------
 function setupPreview() {
-  const audio = $('audio'), seek = $('seek'), playBtn = $('play');
+  const audio = $('audio'), playBtn = $('play'), toast = $('toast');
   const PRE = engine.preroll, D = engine.duration;      // the film runs from song time -PRE (silent warning page) to D
   audio.src = urlOf(cfg.paths.audio);
-  seek.min = (-PRE).toFixed(3); seek.max = D.toFixed(3);
 
   const lim = (v) => Math.max(-PRE, Math.min(D, v));
   let t = lim(qs.has('t') ? +qs.get('t') || 0 : -PRE);   // current time while paused
-  let lastDrawn = NaN, perf = 0, shown = '';
+  let lastDrawn = NaN;
   // Two clocks (preview transport only: a frame still depends on t alone). While the song sounds, the <audio> element
   // is the clock. Before the song there is no audio clock, and there is none either when the sound cannot be had (no
   // file, the browser will not start it, nothing to play it on): then the preview runs on the wall clock, silently.
@@ -113,14 +122,40 @@ function setupPreview() {
 
   const playing = () => wall !== null || (!audio.paused && !audio.ended);
   const now = () => (wall ? Math.min(mute ? D : 0, wall.t0 + (performance.now() - wall.at) / 1000) : !audio.paused && !audio.ended ? audio.currentTime : t);
-  const label = () => { playBtn.textContent = playing() ? 'pause' : 'play'; };
+  // ---- the interface is the button and nothing else ---------------------------------
+  let toastTimer = 0, idleTimer = 0;
+  /** A failure the picture cannot show (usually: the sound will not start). Fades by itself. */
+  const say = (msg) => {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 5600);
+  };
+  /** While the film runs, the pointer steps out of the way after a moment of stillness (the button is gone by then). */
+  const wake = () => {
+    document.body.classList.remove('idle');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (playing()) document.body.classList.add('idle'); }, 1600);
+  };
+  addEventListener('pointermove', wake, { passive: true });
+  addEventListener('pointerdown', wake, { passive: true });
+  // `body.playing` is what hides the glass button: it is a play button, never a pause button, so it exists only while
+  // the film stands still. The picture itself is the pause: a click on it stops the film.
+  const label = () => {
+    const p = playing();
+    playBtn.dataset.state = p ? 'playing' : 'paused';
+    playBtn.setAttribute('aria-label', p ? 'pause' : 'play');
+    document.body.classList.toggle('playing', p);
+    if (p) wake(); else { document.body.classList.remove('idle'); clearTimeout(idleTimer); }
+  };
   /** Start the sound at t (>= 0). If it will not start, the picture goes on without it rather than stand still. */
   const start = () => {
     heard = { t: -1, at: performance.now() };
     if (Math.abs(audio.currentTime - t) > 0.02) audio.currentTime = t;      // (the wall clock has run on without it)
     audio.play().catch((e) => {
       if (e.name === 'AbortError' || !audio.paused) return;                 // overtaken by a pause or a seek of ours
-      mute = { why: e.name === 'NotAllowedError' ? 'the browser did not let the sound start: press pause, then play' : `no sound (${e.name})`, retry: true };
+      mute = { why: e.name === 'NotAllowedError' ? 'the browser did not let the sound start: press the button again' : `no sound (${e.name})`, retry: true };
+      say(mute.why);
       wall = { t0: t, at: performance.now() }; label();
     });
   };
@@ -142,16 +177,17 @@ function setupPreview() {
   const setT = (v) => { const was = playing(); pause(); t = lim(v); audio.currentTime = Math.max(0, t); if (was) play(); };
 
   playBtn.onclick = () => (playing() ? pause() : play());
+  // while the film runs the button is not in the way (body.playing): the click that stops it lands on the picture
+  $('view').onclick = () => (playing() ? pause() : play());
   audio.onplay = audio.onpause = () => { if (!wall && audio.paused && !audio.ended) t = audio.currentTime; label(); };
   audio.onended = () => { t = D; label(); };
   audio.onerror = () => {                                 // no file, or one the browser cannot play: the picture alone
     const was = playing();
     pause();
     mute = { why: `no sound: "${cfg.paths.audio}" is missing or cannot be played here`, retry: false };
+    say(mute.why);
     if (was) play();
   };
-  seek.oninput = () => setT(+seek.value);
-  seek.onchange = () => seek.blur();                      // after a drag the keys below are the page's again, not the slider's
   window.addEventListener('keydown', (e) => {
     const dir = e.code === 'ArrowLeft' ? -1 : e.code === 'ArrowRight' ? 1 : 0;
     if (e.code === 'Space') { e.preventDefault(); playBtn.blur(); playBtn.click(); }    // (a focused button would click a second time)
@@ -160,26 +196,8 @@ function setupPreview() {
     else if (e.key === '.') { pause(); setT(t + 1 / 60); }
   });
 
-  const sound = () => (mute ? mute.why
-    : audio.readyState < 2 ? 'loading…'
-    : !audio.paused && !audio.ended && audio.readyState < 3 ? 'buffering…'
-    : `${wall ? 'starts when the page before the song is over' : !audio.paused && !audio.ended ? 'playing' : 'ready'}   ${timecode(audio.duration)}`);
-
-  function draw(now) {
-    const t0 = performance.now();
-    engine.renderFrame(now);
-    perf = perf * 0.9 + (performance.now() - t0) * 0.1;
-    const f = engine.features.sample(now - cfg.timing.offset), ly = engine.lyrics.state(now - cfg.timing.offset);
-    if (document.activeElement !== seek) seek.value = now;
-    $('clock').textContent = `${timecode(now)} / ${timecode(D)}`;
-    $('iT').textContent = `${now.toFixed(3)} / ${Math.round(now * 60)}   (film ${timecode(now + PRE)})`;
-    $('iLine').textContent = ly.index < 0 ? '-' : `${ly.index + 1} / ${engine.lyrics.lines.length}${ly.active ? '' : ' (ended)'}  "${ly.line.text}"`;
-    $('iBeat').textContent = now < 0 ? 'before the song' : `beat ${f.beat} (${f.beatInBar + 1}/4)   bar ${f.bar}   ${engine.features.bpm} BPM`;
-    const shot = engine.shotAt(now - cfg.timing.offset);
-    $('iScene').textContent = shot ? `${engine.activeScenes(now - cfg.timing.offset).join(' → ')}   [${shot.state}]` : '-';
-    $('iMoment').textContent = shot?.moment || '-';
-    $('iPerf').textContent = `${perf.toFixed(1)} ms/frame @ ${width}x${height}   GPU: ${engine.rendererInfo()}`;
-  }
+  // A frame is a function of t alone: one call, and the picture is that moment of the film.
+  const draw = (now) => engine.renderFrame(now);
 
   // requestAnimationFrame is only a repaint trigger; the frame content depends on t alone.
   function tick() {
@@ -194,17 +212,15 @@ function setupPreview() {
       if (c !== heard.t) heard = { t: c, at: w };
       else if (w - heard.at > (waiting ? 4000 : 2500)) {  // it stands still: go on without it rather than freeze
         t = c; audio.pause();
-        mute = { why: `the sound ${waiting ? 'does not load' : 'does not advance (no output device?)'}: playing without it; pause, then play, tries again`, retry: true };
+        mute = { why: `the sound ${waiting ? 'does not load' : 'does not advance (no output device?)'}: playing without it; press the button twice to try again`, retry: true };
+        say(mute.why);
         wall = { t0: t, at: w }; label();
       }
     }
     if (n !== lastDrawn) { draw(n); lastDrawn = n; }
-    const s = sound();
-    if (s !== shown) { $('iAudio').textContent = shown = s; $('iAudio').classList.toggle('warn', !!mute); }
     requestAnimationFrame(tick);
   }
   tick();
-  playBtn.disabled = false;
   boot.done();
   window.__preview = { engine, setT };   // handy for debugging from the console
 }

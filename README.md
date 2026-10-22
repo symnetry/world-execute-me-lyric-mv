@@ -50,12 +50,12 @@ Mili《world.execute(me);》的歌詞 MV 渲染工程,**第四版**。整支影�
 
 ### 倉庫裡沒有的:歌曲與歌詞
 
-**本倉庫不含歌曲,也不含歌詞**,它們屬於 Mili。兩樣都請自備,放進 `音頻&歌詞/`(git 會忽略那裡的檔案;細節見 [音頻&歌詞/README.md](音頻&歌詞/README.md)):
+**本倉庫不含歌曲,也不含歌詞**,它們屬於 Mili。兩樣都請自備,放進 `audio/`(git 會忽略那裡的檔案;細節見 [audio/README.md](audio/README.md)):
 
 | 檔案 | 預設路徑(`config.json → paths`) | 要求 |
 | --- | --- | --- |
-| 歌曲 | `音頻&歌詞/Mili - world.execute (me) ;.wav` | 你自己的原曲音檔。開頭空白的長度與製作時不同的版本,用 `config.json → timing.offset` 整體校正。 |
-| 歌詞 | `音頻&歌詞/Mili - world.execute (me) ;.lrc` | 任何時間軸的 LRC,或純文字;那個資料夾裡只有一個 `.lrc` / `.txt` 時檔名不拘。 |
+| 歌曲 | `audio/world-execute-me.mp3` | 你自己的原曲音檔。開頭空白的長度與製作時不同的版本,用 `config.json → timing.offset` 整體校正。 |
+| 歌詞 | `audio/world-execute-me.lrc` | 任何時間軸的 LRC,或純文字;那個資料夾裡只有一個 `.lrc` / `.txt` 時檔名不拘。 |
 
 歌詞檔**只需要有同樣的詞、同樣的順序**。片中每一行的時間都在倉庫的 `data/lyric_timing.json` 裡(不含歌詞文字);
 `tools/fill_lyrics.mjs` 在每次預覽、導出、生成分鏡表之前自動把你的詞填進去,寫成只留在本機的 `data/lyrics.json`:
@@ -71,7 +71,7 @@ Mili《world.execute(me);》的歌詞 MV 渲染工程,**第四版**。整支影�
 需要 [Node.js](https://nodejs.org/) 20 以上;導出影片另需本機已安裝的 Chrome 或 Edge。本工程只在 Windows 11 上製作與測試過,其他系統沒有試過。
 
 1. 下載:在 [Releases](../../releases/latest) 下載 Source code (zip) 並解壓,或 `git clone` 本倉庫。
-2. 把你自己的歌曲與歌詞放進 `音頻&歌詞/`(見上表)。
+2. 把你自己的歌曲與歌詞放進 `audio/`(見上表)。
 3. Windows 可以直接雙擊 `preview.cmd`(第一次會先安裝依賴)。或者在終端機裡:
 
    ```bash
@@ -130,12 +130,12 @@ and exported frame by frame through headless Chrome into ffmpeg. All sections of
 ### What is not in the repository: the song and the lyrics
 
 **This repository contains no music and no lyrics.** They belong to Mili. Bring your own and put both into the folder
-`音頻&歌詞/` ("audio & lyrics"; git ignores what you put there, see [its README](音頻&歌詞/README.md)):
+`audio/` ("audio & lyrics"; git ignores what you put there, see [its README](audio/README.md)):
 
 | File | Default path (`config.json → paths`) | What it has to be |
 | --- | --- | --- |
-| Song | `音頻&歌詞/Mili - world.execute (me) ;.wav` | Your own audio file of the original song. If your version has a different amount of silence at the start, shift everything with `config.json → timing.offset`. |
-| Lyrics | `音頻&歌詞/Mili - world.execute (me) ;.lrc` | An LRC file with any timing, or plain text. If the folder holds exactly one `.lrc` / `.txt`, its name does not matter. |
+| Song | `audio/world-execute-me.mp3` | Your own audio file of the original song. If your version has a different amount of silence at the start, shift everything with `config.json → timing.offset`. |
+| Lyrics | `audio/world-execute-me.lrc` | An LRC file with any timing, or plain text. If the folder holds exactly one `.lrc` / `.txt`, its name does not matter. |
 
 The lyric file **only has to carry the same words in the same order**. The time of every line of the film is in
 `data/lyric_timing.json` (which has no lyric text). Before every preview, export and storyboard, `tools/fill_lyrics.mjs`
@@ -153,7 +153,7 @@ You need [Node.js](https://nodejs.org/) 20 or newer; exporting a video also need
 The project was made and tested on Windows 11 only.
 
 1. Download: get "Source code (zip)" from [Releases](../../releases/latest) and unpack it, or `git clone` the repository.
-2. Put your own song and lyric file into `音頻&歌詞/` (see the table above).
+2. Put your own song and lyric file into `audio/` (see the table above).
 3. On Windows, double-click `preview.cmd` (the first run installs the dependencies). Or, in a terminal:
 
    ```bash
@@ -207,14 +207,40 @@ the prompt of version 4 was written when version 3 already existed.
 ## 直接在網頁上看
 
 ```bash
-npm run preview
+npm run dev
 ```
-開啟 http://localhost:5173/ :與音頻同步播放,可拖動進度條(從 −5 秒的警告頁開始);畫面下方顯示目前的**鏡頭 id、顏色狀態、以及它是對話裡的哪個時刻**。
+
+開啟 http://localhost:5173/ :整個畫面只有一幅填滿視窗的畫布,中央一顆霧面玻璃的圓形播放鍵。按一下開始,再點一下畫面就停下。
+播放時那顆鍵**完全消失**——它只是播放鍵,不是暫停鍵;暫停鍵一直待在畫面正中會擋住片子。滑鼠靜止一秒半之後游標也一併隱藏。
 `?t=150` 直接跳到歌曲的某一秒,`?w=1920&h=1080` 以 1080p 預覽。空白鍵播放 / 暫停,←/→ 跳 1 秒,`,` `.` 逐幀。
-開啟時畫面上有載入進度(設定、分析資料、字體、剪影、鏡頭,一項一格);畫面下方的 `sound` 一行顯示聲音的狀態。
-聲音放不出來時(沒有音檔、瀏覽器不讓它開始、音頻一直沒有前進)畫面不會停住:預覽改以無聲繼續,並在 `sound` 一行寫明原因;
-能重試的情況下,按暫停再按播放就會再試一次。
+開啟時畫面上有載入進度(設定、分析資料、字體、剪影、鏡頭,一項一格),載完淡出。
+聲音放不出來時(沒有音檔、瀏覽器不讓它開始、音頻一直沒有前進)畫面不會停住:預覽改以無聲繼續,原因以一行小字顯示幾秒後淡出;
+能重試的情況下,點一下畫面暫停再按播放就會再試一次。
 `?lab=plates`(或 `inks`、`glyph`、`walls`、`verse2`、`pre2`、`history`、`love`、`closeups`)改看「檢查卡」:單獨的一張圖,不帶歌詞。
+
+`npm run preview` 是同一個頁面,但走 `export/server.mjs`:一個零依賴的靜態伺服器(支援 HTTP Range,所以能拖時間軸),不經打包器。
+改 `src/` 時用它或 `npm run dev` 都可以;要發布就用下面的打包。
+
+## 打包與部署
+
+```bash
+npm run build
+```
+
+產物在 `dist/worldexcuteme/`(76 個檔、約 23 MB)。整包丟到伺服器的 `/worldexcuteme/` 底下,開 `https://你的域名/worldexcuteme/` 就是完整作品;
+`base` 已設成 `/worldexcuteme/`,資源路徑、字體、`config.json` 都跟著走,不需要改任何一行程式。
+
+`vite.config.js` 裡兩件事值得知道:
+
+- `mvRuntimeFiles` — `data/`、剪影、`docs/v4/` 和音檔不是 import 進來的,打包器看不見它們。這個外掛在 `closeBundle` 把它們原樣複製進產物,
+  並把音檔複製成 `audio/<檔名>`、順手改寫產物裡 `config.json` 的 `paths.audio`。所以**音檔不必進倉庫,但要在本機放好再打包**。
+- `mvFontSubset` — 四個 Noto 套件加起來約 300 MB,片子實際只用到 48 個字形。這個外掛按 `config.fonts.cjk[].text` 逐個 `unicode-range`
+  對照,只留下命中的 `@font-face` 分片,字體從 300 MB 降到 1.1 MB。
+
+要改部署路徑,改 `vite.config.js` 最上面的 `DEPLOY_PATH` 就好。想在本機先看產物:`npx vite preview --base /worldexcuteme/`
+(注意 Git Bash 會把 `/worldexcuteme/` 當成路徑改寫掉,要用 `cmd` 或 PowerShell 跑,或者直接拿 `export/server.mjs` 指到 `dist/worldexcuteme/`)。
+
+`dist/` 在 `.gitignore` 裡。發布前記得跑一次 `npm run check:lyrics`:產物會帶著音檔,而倉庫不能有歌詞。
 
 ## 其他命令
 
@@ -315,7 +341,7 @@ docs/v4/maps/            上一輪對第三版逐段的分析(時間、座標、
 data/lyric_timing.json   片中每一行歌詞的時間、段落、是否關鍵詞、詞數與雜湊值(不含歌詞文字)
 data/audio_features.json 從錄音算出的節拍格、起音、響度、頻段能量與粗略頻譜(製作時的那一份)
 data/lyrics.json         (不在倉庫內)由 tools/fill_lyrics.mjs 從你的歌詞檔生成,只留在本機
-音頻&歌詞/               (不在倉庫內)你自己的歌曲與歌詞檔
+audio/               (不在倉庫內)你自己的歌曲與歌詞檔
 assets/character/        八張三色剪影(f_bust … cat_paws)+ regions.json(第三版的六張插畫已撤下,不在倉庫內)
 src/engine/
   engine.js       renderFrame(t):唯一的渲染入口(t 可為負:片頭);兩個內容圖層 + 一個覆蓋層

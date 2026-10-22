@@ -1,6 +1,6 @@
 # The song and its lyrics belong to Mili: bring your own, never commit them.
-/音頻&歌詞/*
-!/音頻&歌詞/README.md
+/audio/*
+!/audio/README.md
 *.wav
 *.flac
 *.mp3
@@ -12,6 +12,9 @@
 
 # renders (the videos carry the song)
 /out/
+
+# the vite build: it carries the song, the lyric text and a copy of the art
+/dist/
 
 # the maker's source pictures and older versions: not part of the repository
 /圖片/
@@ -30,3 +33,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 /.claude/settings.local.json
+
+
+/.workbuddy-ai
+/.gitignore

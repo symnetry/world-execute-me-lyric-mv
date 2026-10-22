@@ -415,7 +415,7 @@ D1 91.05、D2 91.98、D3 94.93、D4 95.63、D5 96.31、D6 97.50、D7 97.97、D8 
 - 除了我提供的剪影，其余视觉全部由代码绘制；不复制其他影片的具体镜头，不用下载的画面或截图。
 - Claude 的图标与界面由代码绘制；CREDITS.md 和片尾保留「非官方同人作品，与 Anthropic、Mili 无关」的声明。
 - 字体只用 OFL 授权；新增字体或依赖时更新 README 与 CREDITS.md。
-- 音频只用 `音頻&歌詞/` 下的 wav。
+- 音频只用 `audio/` 下的 wav。
 - 渲染保持确定性：每一帧只由 t 决定，不存跨帧状态，随机数用 `prng.js`。
 - 环境：Windows 11，没有系统 ffmpeg 和 git（用 ffmpeg-static），Python 用 `.venv`，导出用 Chrome + playwright-core。
 - README、CREDITS、分镜表沿用原来的繁体中文；给我的说明用简体中文。

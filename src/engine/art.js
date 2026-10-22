@@ -24,6 +24,7 @@
 import { rand } from './prng.js';
 import { outline, smoothPath } from './trace.js';
 import { clamp } from './util.js';
+import { assetUrl } from './url.js';
 
 /** The silhouettes (assets/character/<key>.png; sources and what each shows: docs/v4/PLAN.md §4). All the art there is. */
 export const INK_NAMES = ['f_bust', 'f_profile', 'f_reach', 'f_eye', 'boy_bust', 'man_bust', 'cat_bust', 'cat_paws'];
@@ -50,12 +51,12 @@ export async function loadArt(cfg, step = () => {}) {
   const dir = cfg.paths.art, art = new Art();
   await Promise.all(ART_NAMES.map(async (name) => {
     const img = new Image();
-    img.src = `/${dir}/${name}.png`;
+    img.src = assetUrl(`${dir}/${name}.png`);
     await img.decode();
     art._prepareInk(name, img);
     await step(`silhouette  ${name}`);
   }));
-  try { art.regions = await (await fetch(`/${dir}/regions.json`)).json(); } catch { art.regions = {}; }
+  try { art.regions = await (await fetch(assetUrl(`${dir}/regions.json`))).json(); } catch { art.regions = {}; }
   return art;
 }
 

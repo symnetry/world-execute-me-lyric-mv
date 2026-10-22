@@ -10,6 +10,31 @@ import { sequence } from './shot.js';
 import { overlayScene, prerollShot } from './overlay.js';
 import { fallbackShot } from './kit.js';
 
+// Sections are imported statically and looked up by file name. `import(name)` with a name taken from a table is
+// invisible to a bundler — under Vite it turned into a URL that only exists in the repository — and a static map
+// behaves the same whether the page is served from the repository as-is (export/server.mjs, no bundler) or built.
+import * as m01 from './01_boot.js';
+import * as m02 from './02_title.js';
+import * as m03 from './03_verse1.js';
+import * as m04 from './04_pre1.js';
+import * as m05 from './05_chorus.js';
+import * as m06 from './06_verse2.js';
+import * as m07 from './07_pre2.js';
+import * as m08 from './08_chorus2.js';
+import * as m09 from './09_alone.js';
+import * as m10 from './10_error.js';
+import * as m11 from './11_execution.js';
+import * as m12 from './11_count.js';
+import * as m13 from './12_chorusx.js';
+import * as m14 from './12_outro.js';
+import * as m15 from './13_shutdown.js';
+
+const SECTION_MODULES = {
+  './01_boot.js': m01, './02_title.js': m02, './03_verse1.js': m03, './04_pre1.js': m04, './05_chorus.js': m05,
+  './06_verse2.js': m06, './07_pre2.js': m07, './08_chorus2.js': m08, './09_alone.js': m09, './10_error.js': m10,
+  './11_execution.js': m11, './11_count.js': m12, './12_chorusx.js': m13, './12_outro.js': m14, './13_shutdown.js': m15,
+};
+
 /** [file, export, argument, section number, state] in film order. */
 const SECTIONS = [
   ['./01_boot.js', 'bootShots'],                    //  1  0:00  boot                                   off
@@ -46,7 +71,7 @@ export async function buildShots(env) {
   const defs = [];
   for (const [file, fn, arg] of SECTIONS) {
     try {
-      const mod = await import(file);
+      const mod = SECTION_MODULES[file];
       defs.push(...mod[fn](env, arg));
     } catch (e) {
       console.warn(`[scenes] ${file} not used: ${e.message}`);

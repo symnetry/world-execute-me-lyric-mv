@@ -4,67 +4,130 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>world.execute(me); — lyric MV preview</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305070a'/%3E%3Crect x='9' y='9' width='14' height='14' fill='%23e8823f'/%3E%3C/svg%3E">
 <style>
-  html, body { margin: 0; background: #05070a; color: #b9cfe3; font: 13px/1.5 Consolas, "JetBrains Mono", monospace; }
-  body.export { background: #000; overflow: hidden; }
-  body.export #ui, body.export #loading { display: none; }
-  #wrap { max-width: 980px; margin: 18px auto; padding: 0 10px; }
-  #stage { position: relative; }
-  canvas#view { display: block; box-sizing: border-box; width: 100%; max-width: 960px; height: auto; aspect-ratio: 16 / 9; background: #000; border: 1px solid #1c2a3a; }
-  body.export canvas#view { border: 0; width: auto; height: auto; max-width: none; aspect-ratio: auto; }
-  /* shown over the picture until the first frame is drawn (src/main.js: boot) */
-  #loading { position: absolute; inset: 0; max-width: 960px; display: flex; align-items: center; justify-content: center; background: #05070a; border: 1px solid #1c2a3a; box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #05070a; overflow: hidden; }
+  body { display: grid; place-items: center; }
+  body.playing.idle { cursor: none; }
+
+  /* the film, 16:9, as large as the window allows */
+  #view { display: block; width: min(100vw, 177.778vh); height: min(100vh, 56.25vw); background: #000; }
+
+  /* ---- the play button: a lens of liquid glass, centred on the picture -------------------------------------- */
+  #play {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: clamp(84px, 8.2vw, 132px); aspect-ratio: 1; padding: 0;
+    display: grid; place-items: center;
+    border: 0; border-radius: 50%; cursor: pointer;
+    background-color: rgba(255, 255, 255, .055);
+    -webkit-backdrop-filter: blur(18px) saturate(200%) brightness(1.05);
+    backdrop-filter: blur(18px) saturate(200%) brightness(1.05);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, .48),
+      0 2px 8px rgba(0, 0, 0, .28),
+      0 0 0 1px rgba(255, 255, 255, .06),
+      0 0 64px rgba(186, 224, 255, .16),
+      inset 0 1px 1px rgba(255, 255, 255, .95),
+      inset 0 -1px 1px rgba(255, 255, 255, .22);
+    transition: opacity .5s ease, transform .3s cubic-bezier(.2, .8, .3, 1), box-shadow .3s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* the rim: a hairline that catches the light on one side and thins out on the other, turning slowly */
+  #play::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%; padding: 1.2px;
+    background: conic-gradient(from 0deg,
+      rgba(255,255,255,.20), rgba(255,255,255,.95) 40deg, rgba(255,255,255,.28) 96deg,
+      rgba(255,255,255,.08) 165deg, rgba(255,255,255,.38) 236deg, rgba(255,255,255,.88) 300deg,
+      rgba(255,255,255,.20) 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude; pointer-events: none;
+    animation: glass-rim 18s linear infinite;
+  }
+  @keyframes glass-rim { to { transform: rotate(360deg); } }
+  /* the specular bloom that makes it read as glass rather than a grey disc */
+  #play::after {
+    content: ''; position: absolute; left: 21%; top: 11%; width: 48%; height: 27%;
+    border-radius: 50%; pointer-events: none;
+    background: radial-gradient(52% 100% at 45% 22%, rgba(255,255,255,.55), rgba(255,255,255,0) 70%);
+    filter: blur(5px); opacity: .85;
+  }
+  #play:hover {
+    transform: translate(-50%, -50%) scale(1.06);
+    box-shadow:
+      0 30px 74px rgba(0, 0, 0, .6), 0 4px 14px rgba(0, 0, 0, .35),
+      0 0 66px rgba(180, 220, 255, .22),
+      inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -22px 38px rgba(255, 255, 255, .16),
+      inset 0 0 0 1px rgba(255, 255, 255, .26);
+  }
+  #play:active { transform: translate(-50%, -50%) scale(.97); transition-duration: .08s; }
+  #play:focus-visible { outline: 2px solid rgba(180, 214, 245, .8); outline-offset: 8px; }
+
+  #play svg { width: 40%; height: 40%; display: block; overflow: visible; position: relative; }
+  #play svg path, #play svg rect { fill: #fff; }
+  /* the triangle is optically centred, not geometrically */
+  .icon-play { transform: translateX(7%); filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .45)); }
+
+  /* While the film runs there is no button at all: the picture is the interface. A click on the picture pauses it,
+     and the button comes back only then. The pointer itself steps out of the way after a moment of stillness. */
+  body.playing #play { opacity: 0; pointer-events: none; transform: translate(-50%, -50%) scale(.9); }
+  body.playing.idle { cursor: none; }
+  /* export mode: no interface at all, and the canvas at its own size (Node reads the framebuffer, not the layout) */
+  body.export { background: #000; }
+  body.export #view { width: auto; height: auto; }
+  body.export #play, body.export #loading, body.export #toast { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #play::before { animation: none; }
+    #play, body.playing #play { transition: none; }
+  }
+
+  /* only ever used for a failure the picture cannot show (the sound will not start): it fades by itself */
+  #toast {
+    position: fixed; left: 50%; bottom: 34px; transform: translateX(-50%); max-width: min(560px, 86vw);
+    padding: 9px 15px; border-radius: 12px; font: 12px/1.5 Consolas, "JetBrains Mono", monospace; color: #dbe9f6;
+    background: rgba(12, 20, 30, .72); border: 1px solid rgba(255, 255, 255, .12);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+    opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s;
+    pointer-events: none; text-align: center;
+  }
+  #toast.show { opacity: 1; visibility: visible; }
+  body.export #toast { display: none; }
+
+  /* ---- boot progress, over the picture, gone before the first frame is seen -------------------------------- */
+  #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #05070a; }
   #loading[hidden] { display: none; }
-  #loadBox { width: min(420px, 80%); }
+  #loadBox { width: min(420px, 74vw); font: 13px/1.5 Consolas, "JetBrains Mono", monospace; color: #b9cfe3; }
   #loadTitle { color: #d7e9fa; margin-bottom: 10px; }
   #loadTitle span { color: #5f87ab; }
-  #loadBar { height: 4px; background: #0e1722; border: 1px solid #1c2a3a; }
-  #loadFill { display: block; height: 100%; width: 0; background: #8fbfe8; transition: width 0.12s linear; }
+  #loadBar { height: 2px; background: #0e1722; overflow: hidden; }
+  #loadFill { display: block; height: 100%; width: 0; background: #8fbfe8; transition: width .12s linear; }
   #loadText { margin-top: 8px; color: #5f87ab; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
   #loading.failed #loadFill { background: #e8788f; }
   #loading.failed #loadText { color: #e8788f; white-space: normal; }
-  #bar { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
-  #seek { flex: 1; accent-color: #8fbfe8; }
-  button { background: #0e1722; color: #d7e9fa; border: 1px solid #2b4460; padding: 5px 14px; font: inherit; cursor: pointer; min-width: 74px; }
-  button:hover { border-color: #8fbfe8; }
-  button:disabled { color: #4e6a85; border-color: #1c2a3a; cursor: default; }
-  #info { margin-top: 8px; display: grid; grid-template-columns: 150px 1fr; gap: 2px 12px; }
-  #info b { color: #5f87ab; font-weight: normal; }
-  #info .warn { color: #e8b478; }
-  #help { margin-top: 10px; color: #4e6a85; }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="stage">
-    <canvas id="view"></canvas>
-    <div id="loading">
-      <div id="loadBox">
-        <div id="loadTitle">world.execute(me); <span>— loading the preview</span></div>
-        <div id="loadBar"><i id="loadFill"></i></div>
-        <div id="loadText">config.json</div>
-      </div>
-    </div>
-  </div>
-  <div id="ui">
-    <div id="bar">
-      <button id="play" disabled>play</button>
-      <input id="seek" type="range" min="0" max="1" step="0.001" value="0">
-      <span id="clock">00:00.000</span>
-    </div>
-    <div id="info">
-      <b>t (s) / frame@60</b><span id="iT">-</span>
-      <b>lyric line</b><span id="iLine">-</span>
-      <b>beat / bar</b><span id="iBeat">-</span>
-      <b>shot [colour state]</b><span id="iScene">-</span>
-      <b>moment</b><span id="iMoment">-</span>
-      <b>sound</b><span id="iAudio">-</span>
-      <b>render</b><span id="iPerf">-</span>
-    </div>
-    <div id="help">space: play/pause · ←/→: ±1 s · shift+←/→: ±5 s · , / . : ±1 frame · URL: ?t=12.5 jumps to a time (song time; the warning page before the song is at negative time)</div>
-    <audio id="audio" preload="auto"></audio>
+<canvas id="view"></canvas>
+
+<button id="play" data-state="paused" aria-label="play">
+  <svg viewBox="0 0 48 48" aria-hidden="true">
+    <path class="icon-play" d="M17.5 12.2 L36 24 L17.5 35.8 Z"/>
+  </svg>
+</button>
+
+<div id="loading">
+  <div id="loadBox">
+    <div id="loadTitle">world.execute(me); <span>— loading</span></div>
+    <div id="loadBar"><i id="loadFill"></i></div>
+    <div id="loadText">config.json</div>
   </div>
 </div>
+
+<div id="toast"></div>
+
+<audio id="audio" preload="auto"></audio>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

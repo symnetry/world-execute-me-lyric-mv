@@ -33,7 +33,7 @@
 - 收錄:專輯《Miracle Milk》(2016)
 - 歌曲的音樂、歌詞及錄音版權歸 Mili 及相關權利人所有。
 
-**本倉庫不含這首歌的音頻,也不含歌詞文本。** 預覽與導出時讀取的是你自己放在 `音頻&歌詞/` 的檔案(見 README「需要自備的兩個檔案」);
+**本倉庫不含這首歌的音頻,也不含歌詞文本。** 預覽與導出時讀取的是你自己放在 `audio/` 的檔案(見 README「需要自備的兩個檔案」);
 歌詞只用於畫面顯示。倉庫裡與歌曲有關的資料只有兩份:
 
 - `data/lyric_timing.json`:片中每一行歌詞的起止時間、段落、是否關鍵詞、詞數與字母數,以及兩個截短的雜湊值
@@ -139,7 +139,7 @@ This project is an **unofficial fan work**.
 - The music, the lyrics and the recording are the property of Mili and the respective rights holders.
 
 **This repository contains neither the audio of the song nor the text of its lyrics.** The preview and the exporter read the
-files you put into `音頻&歌詞/` yourself; the lyrics are used for display only. Two files in the repository are derived from the song:
+files you put into `audio/` yourself; the lyrics are used for display only. Two files in the repository are derived from the song:
 
 - `data/lyric_timing.json`: for every lyric line of the film, its start and end time, section, whether it is a keyword line,
   how many words and letters it has, and two truncated hashes (to check your lyric file and to re-divide it where its rows

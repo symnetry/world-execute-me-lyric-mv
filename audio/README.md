@@ -8,8 +8,8 @@
 
 | 檔案 | 預設檔名(`config.json → paths`) | 說明 |
 | --- | --- | --- |
-| 歌曲 | `Mili - world.execute (me) ;.wav` | 檔名不同就改 `config.json → paths.audio`。製作時用的是 44.1 kHz 的 wav;你的版本若開頭的空白長度不同,用 `config.json → timing.offset` 整體校正。 |
-| 歌詞 | `Mili - world.execute (me) ;.lrc` | 任何時間軸的 LRC,或沒有時間軸的純文字都可以;這個資料夾裡只有一個 `.lrc` / `.txt` 時,檔名不拘。 |
+| 歌曲 | `world-execute-me.mp3` | 檔名不同就改 `config.json → paths.audio`。製作時用的是 44.1 kHz 的 wav;你的版本若開頭的空白長度不同,用 `config.json → timing.offset` 整體校正。 |
+| 歌詞 | `world-execute-me.lrc` | 任何時間軸的 LRC,或沒有時間軸的純文字都可以;這個資料夾裡只有一個 `.lrc` / `.txt` 時,檔名不拘。 |
 
 歌詞檔只需要有同樣的詞、同樣的順序。它自己的時間軸和分行不會被採用:`tools/fill_lyrics.mjs` 會把你的詞填進倉庫裡的時間表
 (`data/lyric_timing.json`),生成只留在你本機的 `data/lyrics.json`。預覽、導出與分鏡表都會自動做這一步;想單獨看結果:
@@ -30,8 +30,8 @@ them into this folder (its name means "audio & lyrics"); git ignores everything 
 
 | File | Default name (`config.json → paths`) | Notes |
 | --- | --- | --- |
-| Song | `Mili - world.execute (me) ;.wav` | If your file has another name, change `config.json → paths.audio`. The film was made with a 44.1 kHz wav; if your version has a different amount of silence at the start, shift everything with `config.json → timing.offset`. |
-| Lyrics | `Mili - world.execute (me) ;.lrc` | An LRC with any timing, or plain text without time tags. If this folder holds exactly one `.lrc` / `.txt`, its name does not matter. |
+| Song | `world-execute-me.mp3` | If your file has another name, change `config.json → paths.audio`. The film was made with a 44.1 kHz wav; if your version has a different amount of silence at the start, shift everything with `config.json → timing.offset`. |
+| Lyrics | `world-execute-me.lrc` | An LRC with any timing, or plain text without time tags. If this folder holds exactly one `.lrc` / `.txt`, its name does not matter. |
 
 The lyric file only has to carry the same words in the same order. Its own time tags and line breaks are not used:
 `tools/fill_lyrics.mjs` puts your words into the timing table of the repository (`data/lyric_timing.json`) and writes
